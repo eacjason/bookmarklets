@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Load Roster Link Tool</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* removes scrollbars */
+      font-family: sans-serif;
+    }
+    .container {
+      padding: 1em;
+    }
+    a.bookmarklet {
+      display: inline-block;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #510C76; /* EAC Purple */
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+    }
+    a.bookmarklet:hover {
+      background-color: #3d095b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="bookmarklet" href="javascript:(function(){var s=document.createElement('script');s.src='https://eacjason.github.io/bookmarklets/anthology/anthology-grade-import.js';document.body.appendChild(s);})();">
+      🍎 Import Grades
+    </a>
+  </div>
+</body>
+</html>
