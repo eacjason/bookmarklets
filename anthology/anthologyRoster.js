@@ -1,124 +1,172 @@
 javascript:(function(){
   'use strict';
-  
-  // Function to export a table to CSV, excluding specified columns.
+
+  // Helper: create elements
+  function el(tag, props, ...children){
+    const e = document.createElement(tag);
+    if (props) Object.assign(e, props);
+    for (const c of children){
+      if (c == null) continue;
+      if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+      else e.appendChild(c);
+    }
+    return e;
+  }
+
+  // Fetch roster page HTML and return a DOM
+  async function fetchRosterDoc(csiId){
+    const domain = document.location.protocol + '//' + document.location.host;
+    const url = domain + '/CMCPortal/Secure/Staff/Acad/ClassRoster_DayView.aspx?v=d&csi=' + encodeURIComponent(csiId);
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+    const html = await res.text();
+    const parser = new DOMParser();
+    return parser.parseFromString(html, 'text/html');
+  }
+
+  // Count students = number of body rows in the roster table
+  function countStudents(doc){
+    const rows = doc.querySelectorAll('#dgClassRoster tbody tr');
+    return { total: rows.length };
+  }
+
+  // Export table to CSV in a popup context (same as your original)
   function exportTableToCSV(tableSelector, filename) {
     var table = document.querySelector(tableSelector);
     if (!table) {
-      alert("Table not found!");
+      alert('Table not found!');
       return;
     }
-    var rows = Array.from(table.querySelectorAll("tr")).map(function(tr) {
-      var cells = Array.from(tr.querySelectorAll("th, td"));
-      // Exclude columns: 3 ("Class Status"), 4 ("Class Date"), and 8 ("Image")
+    var rows = Array.from(table.querySelectorAll('tr')).map(function(tr) {
+      var cells = Array.from(tr.querySelectorAll('th, td'));
+      // Exclude columns 3, 4, 8
       var filteredCells = cells.filter(function(cell, i) {
         return i !== 3 && i !== 4 && i !== 8;
       }).map(function(cell) {
-        // Trim text and collapse multiple whitespace characters
-        var text = cell.textContent.trim().replace(/\s+/g, " ");
+        var text = cell.textContent.trim().replace(/\s+/g, ' ');
         return '"' + text.replace(/"/g, '""') + '"';
       });
-      return filteredCells.join(",");
+      return filteredCells.join(',');
     });
-    var csvContent = rows.join("\n");
-    var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    var link = document.createElement("a");
-    if (link.download !== undefined) { // feature detection
+    var csvContent = rows.join('\n');
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    if (link.download !== undefined) {
       var url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", filename);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
   }
-  
-  // Loop through each cell that holds the roster link area.
-  var cells = document.querySelectorAll("[id$='_DivEmailClass']");
-  cells.forEach(function(cell) {
-    // Find the outer container (div with text-align: left)
-    var container = cell.closest("div[style*='text-align: left']");
+
+  // Main loop: add links and count badge
+  const cells = document.querySelectorAll("[id$='_DivEmailClass']");
+  cells.forEach(function(cell){
+    const container = cell.closest("div[style*='text-align: left']");
     if (!container) return;
-    
-    // Prevent duplicate link additions
-    if (container.querySelector(".view-roster-link")) return;
-    
-    // Get the envelope icon and extract the CSI from its onclick attribute.
-    var emailIcon = cell.querySelector("i[onclick^='showEmailClass']");
-    if (emailIcon) {
-      var onclickText = emailIcon.getAttribute("onclick");
-      var match = onclickText.match(/showEmailClass\((\d+),/);
-      if(match) {
-        var csiId = match[1];
-        
-        // Extract course code and section number from the corresponding row.
-        var row = cell.closest("tr");
-        var courseCode = "";
-        var sectionNumber = "";
-        if (row) {
-          var courseSpan = row.querySelector("span[id*='_lblCourse']");
-          if (courseSpan) {
-            courseCode = courseSpan.textContent.trim();
-          }
-          // Assume the section number appears as a sequence of digits in the container text.
-          var containerText = container.textContent;
-          var secMatch = containerText.match(/(\d{3,})/);
-          if (secMatch) {
-            sectionNumber = secMatch[1];
-          }
-        }
-        
-        // Create "View Roster" link.
-        var viewLink = document.createElement("a");
-        viewLink.textContent = "View Roster";
-        viewLink.href = "#";
-        viewLink.className = "view-roster-link";
-        viewLink.style.fontSize = "smaller";
-        viewLink.style.display = "inline-block";
-        viewLink.style.marginTop = "5px";
-        viewLink.style.textDecoration = "underline";
-        viewLink.addEventListener("click", function(e){
-          e.preventDefault();
-          var domain = document.location.protocol + "//" + document.location.host;
-          var url = domain + "/CMCPortal/Secure/Staff/Acad/ClassRoster_DayView.aspx?v=d&csi=" + csiId;
-          window.open(url, "RosterWindow", "width=1450,height=800");
-        });
-        
-        // Create "Export CSV" link.
-        var exportLink = document.createElement("a");
-        exportLink.textContent = "Export CSV";
-        exportLink.href = "#";
-        exportLink.className = "export-csv-link";
-        exportLink.style.fontSize = "smaller";
-        exportLink.style.display = "inline-block";
-        exportLink.style.marginTop = "5px";
-        exportLink.style.marginLeft = "10px";
-        exportLink.style.textDecoration = "underline";
-        exportLink.addEventListener("click", function(e){
-          e.preventDefault();
-          var domain = document.location.protocol + "//" + document.location.host;
-          var url = domain + "/CMCPortal/Secure/Staff/Acad/ClassRoster_DayView.aspx?v=d&csi=" + csiId;
-          var rosterWindow = window.open(url, "RosterWindowExport", "width=1450,height=800");
-          // Poll for the roster table in the new window.
-          var pollInterval = setInterval(function(){
-            if (rosterWindow && rosterWindow.document && rosterWindow.document.readyState === "complete") {
-              var rosterTable = rosterWindow.document.querySelector("#dgClassRoster");
-              if (rosterTable) {
-                clearInterval(pollInterval);
-                var filename = (courseCode && sectionNumber) ? courseCode + "-" + sectionNumber + ".csv" : "export.csv";
-                rosterWindow.eval('(' + exportTableToCSV.toString() + ')(\"#dgClassRoster\", \"' + filename + '\");');
-                // The pop-up stays open for you to review the file dialog.
+
+    if (container.querySelector('.view-roster-link')) return; // already processed
+
+    const emailIcon = cell.querySelector("i[onclick^='showEmailClass']");
+    if (!emailIcon) return;
+
+    const onclickText = emailIcon.getAttribute('onclick');
+    const match = onclickText && onclickText.match(/showEmailClass\((\d+),/);
+    if (!match) return;
+
+    const csiId = match[1];
+
+    // Extract course code and section
+    const row = cell.closest('tr');
+    let courseCode = '', sectionNumber = '';
+    if (row){
+      const courseSpan = row.querySelector("span[id*='_lblCourse']");
+      if (courseSpan) courseCode = courseSpan.textContent.trim();
+      const text = container.textContent;
+      const secMatch = text && text.match(/(\d{3,})/);
+      if (secMatch) sectionNumber = secMatch[1];
+    }
+
+    const domain = document.location.protocol + '//' + document.location.host;
+    const rosterUrl = domain + '/CMCPortal/Secure/Staff/Acad/ClassRoster_DayView.aspx?v=d&csi=' + csiId;
+
+    // View Roster link
+    const viewLink = el('a', {
+      href: '#',
+      className: 'view-roster-link',
+      onclick: function(e){
+        e.preventDefault();
+        window.open(rosterUrl, 'RosterWindow', 'width=1450,height=800');
+      }
+    }, 'View Roster');
+
+    // Export CSV link
+    const exportLink = el('a', {
+      href: '#',
+      className: 'export-csv-link',
+      onclick: function(e){
+        e.preventDefault();
+        const w = window.open(rosterUrl, 'RosterWindowExport', 'width=1450,height=800');
+        const poll = setInterval(function(){
+          try{
+            if (w && w.document && w.document.readyState === 'complete'){
+              const t = w.document.querySelector('#dgClassRoster');
+              if (t){
+                clearInterval(poll);
+                const filename = (courseCode && sectionNumber) ? (courseCode + '-' + sectionNumber + '.csv') : 'export.csv';
+                w.eval('(' + exportTableToCSV.toString() + ')(\"#dgClassRoster\", \"' + filename + '\");');
               }
             }
-          }, 500);
-        });
-        
-        // Append a line break, then add both links to the container.
-        container.appendChild(document.createElement("br"));
-        container.appendChild(viewLink);
-        container.appendChild(exportLink);
+          }catch(err){ /* wait */ }
+        }, 500);
+      }
+    }, 'Export CSV');
+
+    // Count badge
+    const badge = el('span', { className: 'roster-count-badge', title: 'Click to refresh' }, 'Count: …');
+    Object.assign(badge.style, {
+      display: 'inline-block',
+      marginLeft: '10px',
+      fontSize: '12px',
+      padding: '2px 6px',
+      borderRadius: '999px',
+      border: '1px solid #ccc',
+      cursor: 'pointer',
+      userSelect: 'none'
+    });
+
+    async function refreshCount(){
+      badge.textContent = 'Counting…';
+      try{
+        const doc = await fetchRosterDoc(csiId);
+        const stats = countStudents(doc);
+        badge.textContent = `Count: ${stats.total}`;
+      }catch(err){
+        badge.textContent = 'Count: error';
+        badge.title = String(err);
       }
     }
+    badge.addEventListener('click', refreshCount);
+
+    // Layout
+    container.appendChild(document.createElement('br'));
+    [viewLink, exportLink].forEach(a => {
+      a.style.fontSize = 'smaller';
+      a.style.display = 'inline-block';
+      a.style.marginTop = '5px';
+      a.style.textDecoration = 'underline';
+    });
+    exportLink.style.marginLeft = '10px';
+
+    container.appendChild(viewLink);
+    container.appendChild(exportLink);
+    container.appendChild(badge);
+
+    // Auto count once
+    refreshCount();
   });
+
 })();
