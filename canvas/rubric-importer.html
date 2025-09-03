@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Canvas Rubric Import Bookmarklet</title>
+  <style>
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      margin: 2em;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      color: #510C76; /* EAC Purple */
+    }
+    a.bookmarklet {
+      display: inline-block;
+      padding: 10px 16px;
+      margin: 12px 0;
+      background: #FEA400; /* EAC Gold */
+      color: #000;
+      font-weight: bold;
+      text-decoration: none;
+      border-radius: 8px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    }
+    a.bookmarklet:hover {
+      background: #fcc557;
+    }
+    .note {
+      margin-top: 1em;
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Canvas Rubric Import Bookmarklet</h1>
+  <p>
+    Drag the button below to your bookmarks bar. Then click it whenever you’re inside a Canvas course to launch the rubric importer.
+  </p>
+  <p>
+    <a class="bookmarklet" href="javascript:(function(){var s=document.createElement('script');s.src='https://eacjason.github.io/bookmarklets/canvas/canvas-rubric-import.js?'+Date.now();s.onload=function(){console.log('Canvas Rubric Import loaded');};document.body.appendChild(s);}());">
+      Canvas Rubric Import
+    </a>
+  </p>
+  <p class="note">
+    Tip: If nothing happens when you click the bookmarklet, check your browser’s pop-up/JavaScript restrictions.
+  </p>
+</body>
+</html>
